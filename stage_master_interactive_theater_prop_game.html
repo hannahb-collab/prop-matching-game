@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stage Master - Theater Prop & Scene Studio</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti for Stage Celebrations -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cinzel: ['Cinzel', 'serif'],
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        velvet: {
+                            800: '#9f1239',
+                            900: '#881337',
+                            950: '#4c0519',
+                        },
+                        stage: {
+                            gold: '#f59e0b',
+                            wood: '#b45309',
+                            lightwood: '#fde68a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #180d28;
+            color: #f9fafb;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        .curtain-bg {
+            background: radial-gradient(circle at 50% -10%, #be123c 0%, #6b21a8 55%, #180d28 100%);
+        }
+
+        .stage-floor {
+            background: linear-gradient(180deg, #d97706 0%, #78350f 50%, #451a03 100%);
+            perspective: 800px;
+            box-shadow: inset 0 10px 30px rgba(0, 0, 0, 0.6);
+        }
+
+        .stage-grid-cell {
+            transition: all 0.2s ease-in-out;
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px dashed rgba(253, 224, 71, 0.5);
+        }
+
+        .stage-grid-cell:hover, .stage-grid-cell.drag-over {
+            background: rgba(250, 204, 21, 0.25);
+            border-color: #facc15;
+            box-shadow: 0 0 20px rgba(250, 204, 21, 0.5);
+            transform: scale(1.01);
+        }
+
+        .stage-grid-cell.correct-flash {
+            animation: pulseCorrect 0.6s ease-out;
+        }
+
+        @keyframes pulseCorrect {
+            0% { background-color: rgba(74, 222, 128, 0.6); border-color: #4ade80; }
+            100% { background-color: rgba(255, 255, 255, 0.08); border-color: rgba(253, 224, 71, 0.5); }
+        }
+
+        .spotlight {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: radial-gradient(ellipse at 50% 20%, rgba(254, 240, 138, 0.28) 0%, rgba(0, 0, 0, 0) 75%);
+            mix-blend-mode: screen;
+        }
+
+        .prop-card {
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            touch-action: none;
+        }
+
+        .prop-card:hover {
+            transform: translateY(-6px) scale(1.05);
+            box-shadow: 0 10px 20px -5px rgba(250, 204, 21, 0.4);
+        }
+
+        .prop-card.selected {
+            ring: 4px #facc15;
+            box-shadow: 0 0 25px rgba(250, 204, 21, 0.8);
+            border-color: #facc15;
+            transform: scale(1.06);
+        }
+
+        /* Enhanced Prop Graphic & Standee Visuals */
+        .prop-standee {
+            filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.6));
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .prop-standee:hover {
+            transform: translateY(-4px) scale(1.08);
+        }
+
+        .prop-card-glow {
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 8px 16px -4px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #2e1065;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #a855f7;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #facc15;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between curtain-bg text-gray-100">
+
+    <!-- TOP HEADER NAVBAR -->
+    <header class="bg-purple-950/80 backdrop-blur-md border-b border-yellow-400/30 px-4 py-3 sticky top-0 z-40 shadow-lg">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-3">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-yellow-400 via-amber-300 to-pink-500 flex items-center justify-center shadow-lg shadow-yellow-400/30 text-purple-950 font-black text-2xl transform hover:rotate-6 transition">
+                    <i class="fa-solid fa-masks-theater"></i>
+                </div>
+                <div>
+                    <h1 class="font-cinzel font-extrabold text-xl md:text-2xl tracking-wider text-yellow-300 drop-shadow-sm">STAGE MASTER</h1>
+                    <p class="text-xs text-yellow-100/80 font-bold hidden sm:block">Fun Drama & Prop Staging Studio</p>
+                </div>
+            </div>
+
+            <!-- Center Controls: Theme & Mode -->
+            <div class="flex items-center gap-2 bg-purple-900/90 p-1.5 rounded-2xl border border-purple-500/40">
+                <button id="mode-challenge-btn" onclick="setPlayMode('challenge')" class="px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-2 bg-yellow-400 text-purple-950 shadow-md">
+                    <i class="fa-solid fa-scroll"></i>
+                    <span>Director Cue Challenge</span>
+                </button>
+                <button id="mode-sandbox-btn" onclick="setPlayMode('sandbox')" class="px-3.5 py-1.5 rounded-xl text-xs font-black transition text-purple-200 hover:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>Free Sandbox</span>
+                </button>
+            </div>
+
+            <!-- Right Controls: Audio, Help & Info -->
+            <div class="flex items-center space-x-2">
+                <button id="audio-toggle-btn" onclick="toggleAudio()" title="Toggle Sound FX" class="p-2.5 rounded-2xl bg-purple-900/80 hover:bg-purple-800 text-yellow-300 border border-purple-500/40 transition">
+                    <i class="fa-solid fa-volume-high text-sm"></i>
+                </button>
+                <button onclick="openModal('guide-modal')" title="Stage Terminology Guide" class="px-3.5 py-2 rounded-2xl bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300 border border-yellow-400/40 text-xs font-black flex items-center gap-2 transition">
+                    <i class="fa-solid fa-graduation-cap text-sm"></i>
+                    <span class="hidden md:inline">Stage Directions Guide</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE -->
+    <main class="max-w-7xl mx-auto w-full px-3 py-4 flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-5">
+
+        <!-- LEFT CONTROL PANEL / CUE SHEET (4 Cols on LG) -->
+        <section class="lg:col-span-4 flex flex-col gap-4">
+            
+            <!-- Scene Theme Selector -->
+            <div class="bg-purple-950/80 backdrop-blur border border-purple-500/30 rounded-3xl p-4 shadow-xl">
+                <div class="flex items-center justify-between mb-3">
+                    <label class="text-xs font-black uppercase tracking-wider text-yellow-300 flex items-center gap-2">
+                        <i class="fa-solid fa-film"></i> Pick a Scene Story
+                    </label>
+                    <span id="level-badge" class="text-xs bg-yellow-400/20 text-yellow-300 px-3 py-1 rounded-full border border-yellow-400/40 font-bold">Scene 1 of 5</span>
+                </div>
+                <select id="scene-select" onchange="changeSceneTheme(this.value)" class="w-full bg-purple-900/90 border-2 border-purple-500/50 text-white rounded-2xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:border-yellow-400 cursor-pointer shadow-inner">
+                    <option value="birthday">🎂 The Birthday Party Mystery (Secret Surprise)</option>
+                    <option value="superhero">🦸 Superhero Secret Lair (Gadget Lab)</option>
+                    <option value="haunted_fair">👻 Haunted School Science Fair (Spooky Science)</option>
+                    <option value="space_class">🚀 Alien Space Classroom (Galactic Class)</option>
+                    <option value="musical">🎭 School Musical Extravaganza (Talent Show)</option>
+                </select>
+            </div>
+
+            <!-- Director's Script Panel (Challenge Mode) -->
+            <div id="director-script-card" class="bg-gradient-to-b from-purple-950 via-purple-900/90 to-purple-950 border-2 border-yellow-400/30 rounded-3xl p-4 shadow-2xl flex-1 flex flex-col">
+                <div class="flex items-center justify-between border-b border-purple-800/80 pb-3 mb-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="p-2.5 rounded-2xl bg-yellow-400 text-purple-950 shadow-md font-black">
+                            <i class="fa-solid fa-clapperboard text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 class="font-cinzel font-black text-yellow-300 text-lg">Director's Script</h2>
+                            <p id="scene-title-text" class="text-xs text-purple-200 font-semibold">Act I: The Surprise Party</p>
+                        </div>
+                    </div>
+                    <!-- Score / Star Counter -->
+                    <div class="flex items-center gap-1.5 bg-black/40 px-3.5 py-1.5 rounded-full border border-yellow-400/40 shadow-inner">
+                        <i class="fa-solid fa-star text-yellow-400 text-sm"></i>
+                        <span id="score-text" class="text-xs font-black text-yellow-300">0 / 100</span>
+                    </div>
+                </div>
+
+                <!-- Scene Synopsis -->
+                <p id="scene-description-text" class="text-xs text-purple-100 font-medium bg-black/30 p-3.5 rounded-2xl border border-purple-500/20 mb-3 leading-relaxed">
+                    "Set up the birthday party before the guest of honor arrives! Place the birthday cake right in the middle..."
+                </p>
+
+                <!-- Task Checklists -->
+                <div class="flex-1 overflow-y-auto space-y-2 pr-1 my-1 max-h-60 lg:max-h-none" id="task-list-container">
+                    <!-- Dynamic tasks inserted here -->
+                </div>
+
+                <!-- Guidance & Hints -->
+                <div class="mt-3 pt-3 border-t border-zinc-800/80 flex items-center justify-between gap-2">
+                    <button onclick="toggleGridLabels()" class="text-xs text-amber-400/90 hover:text-amber-300 flex items-center gap-1.5 transition bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg border border-amber-500/20">
+                        <i class="fa-solid fa-eye"></i>
+                        <span id="grid-toggle-text">Toggle Stage Labels</span>
+                    </button>
+                    <button onclick="resetCurrentScene()" class="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 transition px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span>Reset Stage</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Free Sandbox Helper Panel (Hidden in Challenge mode) -->
+            <div id="sandbox-panel" class="hidden bg-zinc-900/80 border border-amber-500/20 rounded-2xl p-4 shadow-xl space-y-3">
+                <h3 class="font-cinzel text-amber-300 text-sm font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-palette"></i> Sandbox Stage Controls
+                </h3>
+                <p class="text-xs text-gray-300 leading-relaxed">
+                    Drag any props onto the stage positions below to design your custom theatrical set layout!
+                </p>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="clearStage()" class="px-3 py-2 bg-red-900/40 hover:bg-red-800/60 text-red-200 border border-red-700/50 text-xs font-semibold rounded-xl transition">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Clear All Props
+                    </button>
+                    <button onclick="triggerCurtainCall()" class="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-xl transition shadow-lg shadow-amber-500/20">
+                        <i class="fa-solid fa-hands-clapping mr-1"></i> Curtain Call!
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT AREA: STAGE CANVAS & BACKSTAGE PROP TRAY (8 Cols on LG) -->
+        <section class="lg:col-span-8 flex flex-col gap-4">
+            
+            <!-- THEATER STAGE CONTAINER -->
+            <div class="relative bg-zinc-950 border-4 border-amber-900/60 rounded-3xl p-3 md:p-6 shadow-2xl overflow-hidden flex flex-col justify-between min-h-[420px] md:min-h-[480px]">
+                
+                <!-- Stage Spotlight Beam Effect -->
+                <div class="spotlight"></div>
+
+                <!-- Proscenium Arch Top Banner -->
+                <div class="absolute top-0 left-0 right-0 h-8 md:h-10 bg-gradient-to-b from-velvet-800 to-transparent flex items-center justify-center z-10 border-b border-amber-500/30">
+                    <span class="text-[10px] md:text-xs tracking-widest text-amber-300/80 uppercase font-cinzel font-bold px-4 py-0.5 bg-black/60 rounded-full border border-amber-500/20">
+                        PROSCENIUM ARCH &bull; AUDIENCE VIEW POINT
+                    </span>
+                </div>
+
+                <!-- Stage Background Graphic / Scene Backdrop -->
+                <div id="stage-backdrop" class="absolute inset-0 opacity-20 transition-all duration-700 bg-cover bg-center" style="background-image: radial-gradient(circle at center, #78350f 0%, #180e04 100%);"></div>
+
+                <!-- STAGE DIRECTION GUIDE TOGGLE BANNER -->
+                <div class="relative z-10 mt-6 mb-2 flex justify-between items-center px-2">
+                    <span class="text-[11px] font-bold text-amber-200/70 bg-black/50 px-2.5 py-1 rounded-md border border-amber-500/20 flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-info text-amber-400"></i>
+                        <span>Stage Right = Screen Left (Actor's Perspective)</span>
+                    </span>
+                    <span id="selected-prop-indicator" class="text-xs font-bold text-amber-300 bg-amber-500/20 px-3 py-1 rounded-md border border-amber-500/40 hidden animate-pulse">
+                        Selected: <span id="selected-prop-name">None</span> (Tap stage cell to place)
+                    </span>
+                </div>
+
+                <!-- 9-GRID STAGE LAYOUT -->
+                <!-- Grid Mapping:
+                     [ USR | USC | USL ]  Upstage (Back)
+                     [  SR |  CS |  SL ]  Center Stage (Middle)
+                     [ DSR | DSC | DSL ]  Downstage (Front / Audience)
+                -->
+                <div class="relative z-10 grid grid-cols-3 gap-2 md:gap-3 flex-1 my-2">
+                    
+                    <!-- UPSTAGE RIGHT -->
+                    <div data-zone="USR" class="stage-grid-cell rounded-2xl p-2 flex flex-col justify-between items-center relative min-h-[100px] border" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'USR')" onclick="handleGridClick('USR')">
+                        <span class="zone-label text-[10px] md:text-xs font-extrabold uppercase tracking-wider text-amber-400/60 bg-black/60 px-2 py-0.5 rounded-md">USR (Upstage Right)</span>
+                        <div class="cell-content flex flex-wrap gap-2 items-center justify-center w-full h-full my-1"></div>
+                    </div>
+
+                    <!-- UPSTAGE CENTER -->
+                    <div data-zone="USC" class="stage-grid-cell rounded-2xl p-2 flex flex-col justify-between items-center relative min-h-[100px] border" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'USC')" onclick="handleGridClick('USC')">
+                        <span class="zone-label text-[10px] md:text-xs font-extrabold uppercase tracking-wider text-amber-400/60 bg-black/60 px-2 py-0.5 rounded-md">USC (Upstage Center)</span>
+                        <div class="cell-content flex flex-wrap gap-2 items-center justify-center w-full h-full my-1"></div>
+                    </div>
+
+                    <!-- UPSTAGE LEFT -->
+                    <div data-zone="USL" class="stage-grid-cell rounded-2xl p-2 flex flex-col justify-between items-center relative min-h-[100px] border" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'USL')" onclick="handleGridClick('USL')">
+                        <span class="zone-label text-[10px] md:text-xs font-extrabold uppercase tracking-wider text-amber-400/60 bg-black/60 px-2 py-0.5 rounded-md">USL (Upstage Left)</span>
+                        <div class="cell-content flex flex-wrap gap-2 items-center justify-center w-full h-full my-1"></div>
+                    </div>
+
+                    <!-- STAGE RIGHT -->
+                    <div data-zone="SR" class="stage-grid-cell rounded-2xl p-2 flex flex-col justify-between items-center relative min-h-[100px] border" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'SR')" onclick="handleGridClick('SR')">
+                        <span class="zone-label text-[10px] md:text-xs font-extrabold uppercase tracking-wider text-amber-400/60 bg-black/60 px-2 py-0.5 rounded-md">SR (Stage Right)</span>
+                        <div class="cell-content flex flex-wrap gap-2 items-center justify-center w-full h-full my-1"></div>
+                    </div>
+
+                    <!-- CENTER STAGE -->
+                    <div data-zone="CS" class="stage-grid-cell rounded-2xl p-2 flex flex-col justify-between items-center relative min-h-[100px] border border-amber-500/40 bg-amber-500/5" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'CS')" onclick="handleGridClick('CS')">
+                        <span class="zone-label text-[10px] md:text-xs font-extrabold uppercase tracking-wider text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-md border border-amber-500/30">CS (Center Stage)</span>
+                        <div class="cell-content flex flex-wrap gap-2 items-center justify-center w-full h-full my-1"></div>
+                    </div>
+
+                    <!-- STAGE LEFT -->
+                    <div data-zone="SL" class="stage-grid-cell rounded-2xl p-2 flex flex-col justify-between items-center relative min-h-[100px] border" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'SL')" onclick="handleGridClick('SL')">
+                        <span class="zone-label text-[10px] md:text-xs font-extrabold uppercase tracking-wider text-amber-400/60 bg-black/60 px-2 py-0.5 rounded-md">SL (Stage Left)</span>
+                        <div class="cell-content flex flex-wrap gap-2 items-center justify-center w-full h-full my-1"></div>
+                    </div>
+
+                    <!-- DOWNSTAGE RIGHT -->
+                    <div data-zone="DSR" class="stage-grid-cell rounded-2xl p-2 flex flex-col justify-between items-center relative min-h-[100px] border" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'DSR')" onclick="handleGridClick('DSR')">
+                        <span class="zone-label text-[10px] md:text-xs font-extrabold uppercase tracking-wider text-amber-400/60 bg-black/60 px-2 py-0.5 rounded-md">DSR (Downstage Right)</span>
+                        <div class="cell-content flex flex-wrap gap-2 items-center justify-center w-full h-full my-1"></div>
+                    </div>
+
+                    <!-- DOWNSTAGE CENTER -->
+                    <div data-zone="DSC" class="stage-grid-cell rounded-2xl p-2 flex flex-col justify-between items-center relative min-h-[100px] border" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'DSC')" onclick="handleGridClick('DSC')">
+                        <span class="zone-label text-[10px] md:text-xs font-extrabold uppercase tracking-wider text-amber-400/60 bg-black/60 px-2 py-0.5 rounded-md">DSC (Downstage Center)</span>
+                        <div class="cell-content flex flex-wrap gap-2 items-center justify-center w-full h-full my-1"></div>
+                    </div>
+
+                    <!-- DOWNSTAGE LEFT -->
+                    <div data-zone="DSL" class="stage-grid-cell rounded-2xl p-2 flex flex-col justify-between items-center relative min-h-[100px] border" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'DSL')" onclick="handleGridClick('DSL')">
+                        <span class="zone-label text-[10px] md:text-xs font-extrabold uppercase tracking-wider text-amber-400/60 bg-black/60 px-2 py-0.5 rounded-md">DSL (Downstage Left)</span>
+                        <div class="cell-content flex flex-wrap gap-2 items-center justify-center w-full h-full my-1"></div>
+                    </div>
+
+                </div>
+
+                <!-- Stage Apron / Footlights Visual -->
+                <div class="relative z-10 flex items-center justify-center gap-4 pt-2 border-t border-amber-900/50">
+                    <div class="flex items-center gap-3">
+                        <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]"></span>
+                        <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]"></span>
+                        <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]"></span>
+                    </div>
+                    <span class="text-[10px] text-amber-400/50 uppercase tracking-widest font-bold">Stage Footlights (Audience Front)</span>
+                    <div class="flex items-center gap-3">
+                        <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]"></span>
+                        <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]"></span>
+                        <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BACKSTAGE PROP TRAY / INVENTORY -->
+            <div class="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-boxes-packing text-amber-400"></i>
+                        <h3 class="font-cinzel text-amber-300 font-bold text-sm">Backstage Prop Shelf</h3>
+                    </div>
+                    <span class="text-xs text-gray-400">Drag or Tap a prop to place on stage</span>
+                </div>
+
+                <!-- Prop Item List -->
+                <div id="prop-tray" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 min-h-[90px] p-2 bg-black/40 rounded-xl border border-zinc-800">
+                    <!-- Dynamic Props Inserted Here -->
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- EDUCATIONAL STAGE GUIDE MODAL -->
+    <div id="guide-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-zinc-900 border border-amber-500/40 max-w-2xl w-full rounded-3xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal('guide-modal')" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-zinc-800 hover:bg-zinc-700 text-amber-400 flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <div class="flex items-center gap-3 mb-4">
+                <div class="p-3 bg-amber-500/20 text-amber-400 rounded-2xl border border-amber-500/30">
+                    <i class="fa-solid fa-masks-theater text-2xl"></i>
+                </div>
+                <div>
+                    <h2 class="font-cinzel font-extrabold text-amber-300 text-xl">Stage Direction Essentials</h2>
+                    <p class="text-xs text-gray-400">Understanding theater grid terminology from the actor's perspective</p>
+                </div>
+            </div>
+
+            <div class="space-y-4 text-sm text-gray-300">
+                <div class="bg-black/40 p-4 rounded-2xl border border-zinc-800 space-y-2">
+                    <h3 class="font-bold text-amber-400 flex items-center gap-2">
+                        <i class="fa-solid fa-compass"></i> Why is "Stage Right" on the Left side of the screen?
+                    </h3>
+                    <p class="text-xs leading-relaxed text-gray-300">
+                        In theater, stage directions are always given from the <strong>actor's perspective</strong> while standing on stage facing the audience! Therefore, when you look at the stage from the audience/camera view:
+                    </p>
+                    <ul class="list-disc list-inside text-xs space-y-1 text-amber-200/90 pl-2">
+                        <li><strong>Stage Right (SR)</strong> = Screen Left</li>
+                        <li><strong>Stage Left (SL)</strong> = Screen Right</li>
+                    </ul>
+                </div>
+
+                <!-- 9 Stage Zones Grid visual -->
+                <div class="border border-amber-500/30 rounded-2xl p-3 bg-zinc-950">
+                    <p class="text-xs font-bold text-amber-300 uppercase tracking-wider mb-2 text-center">The 9 Standard Stage Positions</p>
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs font-mono">
+                        <div class="p-2 bg-zinc-800 rounded-lg text-amber-300"><strong>USR</strong><br><span class="text-[10px] text-gray-400">Upstage Right</span></div>
+                        <div class="p-2 bg-zinc-800 rounded-lg text-amber-300"><strong>USC</strong><br><span class="text-[10px] text-gray-400">Upstage Center</span></div>
+                        <div class="p-2 bg-zinc-800 rounded-lg text-amber-300"><strong>USL</strong><br><span class="text-[10px] text-gray-400">Upstage Left</span></div>
+                        <div class="p-2 bg-zinc-800 rounded-lg text-amber-300"><strong>SR</strong><br><span class="text-[10px] text-gray-400">Stage Right</span></div>
+                        <div class="p-2 bg-amber-500/20 border border-amber-500/40 rounded-lg text-amber-200"><strong>CS</strong><br><span class="text-[10px] text-amber-300">Center Stage</span></div>
+                        <div class="p-2 bg-zinc-800 rounded-lg text-amber-300"><strong>SL</strong><br><span class="text-[10px] text-gray-400">Stage Left</span></div>
+                        <div class="p-2 bg-zinc-800 rounded-lg text-amber-300"><strong>DSR</strong><br><span class="text-[10px] text-gray-400">Downstage Right</span></div>
+                        <div class="p-2 bg-zinc-800 rounded-lg text-amber-300"><strong>DSC</strong><br><span class="text-[10px] text-gray-400">Downstage Center</span></div>
+                        <div class="p-2 bg-zinc-800 rounded-lg text-amber-300"><strong>DSL</strong><br><span class="text-[10px] text-gray-400">Downstage Left</span></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div class="p-3 bg-zinc-800/60 rounded-xl border border-zinc-700">
+                        <span class="font-bold text-amber-400 block mb-1">Upstage (US)</span>
+                        The back part of the stage, farthest away from the audience. (Historically named because older stages sloped downwards towards the audience!).
+                    </div>
+                    <div class="p-3 bg-zinc-800/60 rounded-xl border border-zinc-700">
+                        <span class="font-bold text-amber-400 block mb-1">Downstage (DS)</span>
+                        The front part of the stage, closest to the audience and footlights.
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 text-center">
+                <button onclick="closeModal('guide-modal')" class="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition shadow-lg shadow-amber-500/20">
+                    Got it, Back to Stage!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VICTORY / CURTAIN CALL MODAL -->
+    <div id="victory-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-gradient-to-b from-zinc-900 to-black border-2 border-amber-500/60 max-w-md w-full rounded-3xl p-6 text-center shadow-2xl relative">
+            <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 text-black flex items-center justify-center text-3xl shadow-lg shadow-amber-500/30">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            <h2 class="font-cinzel text-2xl font-extrabold text-amber-300 mb-1">Opening Night Success!</h2>
+            <p class="text-xs text-gray-300 mb-4">The Director is thrilled with your stage management accuracy!</p>
+
+            <div class="bg-zinc-800/80 rounded-2xl p-4 border border-zinc-700 mb-5 space-y-2">
+                <div class="flex justify-between text-xs text-gray-300">
+                    <span>Scene Completed:</span>
+                    <span id="completed-scene-name" class="font-bold text-amber-300">Hamlet's Castle</span>
+                </div>
+                <div class="flex justify-between text-xs text-gray-300">
+                    <span>Rating:</span>
+                    <div class="text-amber-400 space-x-1">
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                    </div>
+                </div>
+                <div class="flex justify-between text-xs text-gray-300">
+                    <span>Final Score:</span>
+                    <span id="victory-score" class="font-bold text-amber-400">100 / 100</span>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="closeModal('victory-modal'); resetCurrentScene();" class="flex-1 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-amber-300 font-bold text-xs rounded-xl border border-zinc-700 transition">
+                    Replay Scene
+                </button>
+                <button onclick="nextScene()" class="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition">
+                    Next Scenario <i class="fa-solid fa-arrow-right ml-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="bg-black/80 border-t border-zinc-800 py-3 px-4 text-center text-xs text-gray-500">
+        <p>Stage Master Studio &bull; Designed for Drama Classrooms & Interactive Performing Arts Learning</p>
+    </footer>
+
+    <script>
+        let currentSceneKey = 'birthday';
+        let currentMode = 'challenge'; // 'challenge' or 'sandbox'
+        let placedProps = {}; // { propId: zoneId }
+        let score = 0;
+        let showGridLabels = true;
+        let selectedPropForTap = null;
+        let audioEnabled = true;
+
+        /* SCENE DATA CONFIGURATION */
+        const SCENES = {
+            birthday: {
+                title: "Act I: The Birthday Party Mystery",
+                desc: "Set up the surprise party before the guest of honor arrives! Place the cake in the center, presents downstage right, and balloons upstage left.",
+                backdrop: "radial-gradient(circle at center, #831843 0%, #31123f 100%)",
+                props: [
+                    { id: 'cake', name: 'Birthday Cake', reqZone: 'CS', hint: 'Center Stage (CS)', color: 'from-pink-500 to-rose-600' },
+                    { id: 'present', name: 'Giant Present', reqZone: 'DSR', hint: 'Downstage Right (DSR)', color: 'from-yellow-400 to-amber-600' },
+                    { id: 'balloons', name: 'Balloon Bunch', reqZone: 'USL', hint: 'Upstage Left (USL)', color: 'from-cyan-400 to-blue-600' },
+                    { id: 'party_hat', name: 'Party Cone', reqZone: 'DSC', hint: 'Downstage Center (DSC)', color: 'from-purple-500 to-indigo-600' },
+                    { id: 'banner', name: 'Surprise Banner', reqZone: 'USC', hint: 'Upstage Center (USC)', color: 'from-amber-400 to-orange-500' },
+                    { id: 'magnifier', name: 'Clue Glass', reqZone: 'SL', hint: 'Stage Left (SL)', color: 'from-sky-400 to-indigo-500' }
+                ]
+            },
+            superhero: {
+                title: "Act II: Superhero Secret Lair",
+                desc: "Prepare the hero lair for action! Holoscreen upstage center, super suit center stage, and laser blaster downstage right.",
+                backdrop: "radial-gradient(circle at center, #1e3a8a 0%, #0f172a 100%)",
+                props: [
+                    { id: 'super_suit', name: 'Hero Armor', reqZone: 'CS', hint: 'Center Stage (CS)', color: 'from-blue-500 to-cyan-500' },
+                    { id: 'laser_blaster', name: 'Laser Blaster', reqZone: 'DSR', hint: 'Downstage Right (DSR)', color: 'from-red-500 to-rose-700' },
+                    { id: 'holoscreen', name: 'Holo Screen', reqZone: 'USC', hint: 'Upstage Center (USC)', color: 'from-cyan-400 to-teal-600' },
+                    { id: 'crystal', name: 'Power Crystal', reqZone: 'DSL', hint: 'Downstage Left (DSL)', color: 'from-emerald-400 to-green-600' },
+                    { id: 'grapple', name: 'Grapple Hook', reqZone: 'SR', hint: 'Stage Right (SR)', color: 'from-slate-400 to-zinc-600' },
+                    { id: 'cape', name: 'Red Cape', reqZone: 'USR', hint: 'Upstage Right (USR)', color: 'from-rose-500 to-red-700' }
+                ]
+            },
+            haunted_fair: {
+                title: "Act III: Haunted Science Fair",
+                desc: "Get the spooky science booth ready! Slime cauldron center stage, giant robot head upstage right, and trophy downstage left.",
+                backdrop: "radial-gradient(circle at center, #14532d 0%, #052e16 100%)",
+                props: [
+                    { id: 'slime_cauldron', name: 'Slime Cauldron', reqZone: 'CS', hint: 'Center Stage (CS)', color: 'from-green-500 to-emerald-700' },
+                    { id: 'robot_head', name: 'Robot Head', reqZone: 'USR', hint: 'Upstage Right (USR)', color: 'from-slate-500 to-zinc-700' },
+                    { id: 'trophy', name: '1st Place Trophy', reqZone: 'DSL', hint: 'Downstage Left (DSL)', color: 'from-yellow-400 to-amber-600' },
+                    { id: 'spell_book', name: 'Spell Book', reqZone: 'SR', hint: 'Stage Right (SR)', color: 'from-purple-600 to-indigo-800' },
+                    { id: 'skeleton', name: 'Glow Skeleton', reqZone: 'USL', hint: 'Upstage Left (USL)', color: 'from-zinc-200 to-slate-400' },
+                    { id: 'laser_jar', name: 'Plasma Jar', reqZone: 'DSC', hint: 'Downstage Center (DSC)', color: 'from-fuchsia-500 to-purple-700' }
+                ]
+            },
+            space_class: {
+                title: "Act IV: Alien Space Classroom",
+                desc: "Arrange the galactic study pod! Hover desk center stage, alien pet downstage center, and space helmet upstage left.",
+                backdrop: "radial-gradient(circle at center, #3b0764 0%, #1e1b4b 100%)",
+                props: [
+                    { id: 'hover_desk', name: 'Hover Desk', reqZone: 'CS', hint: 'Center Stage (CS)', color: 'from-cyan-500 to-blue-700' },
+                    { id: 'alien_pet', name: 'Alien Pet Pod', reqZone: 'DSC', hint: 'Downstage Center (DSC)', color: 'from-lime-400 to-green-600' },
+                    { id: 'space_helmet', name: 'Space Helmet', reqZone: 'USL', hint: 'Upstage Left (USL)', color: 'from-slate-200 to-cyan-400' },
+                    { id: 'galaxy_globe', name: 'Galaxy Globe', reqZone: 'DSR', hint: 'Downstage Right (DSR)', color: 'from-indigo-500 to-purple-700' },
+                    { id: 'jetpack', name: 'Rocket Pack', reqZone: 'SL', hint: 'Stage Left (SL)', color: 'from-red-500 to-orange-600' },
+                    { id: 'raygun_pen', name: 'Raygun Pen', reqZone: 'USR', hint: 'Upstage Right (USR)', color: 'from-purple-500 to-pink-500' }
+                ]
+            },
+            musical: {
+                title: "Act V: The Big School Musical",
+                desc: "Set the stage for opening night! Microphone stand center stage, electric guitar stage right, and drum kit upstage center.",
+                backdrop: "radial-gradient(circle at center, #701a75 0%, #2e1065 100%)",
+                props: [
+                    { id: 'mic_stand', name: 'Mic Stand', reqZone: 'CS', hint: 'Center Stage (CS)', color: 'from-yellow-400 to-amber-500' },
+                    { id: 'guitar', name: 'Electric Guitar', reqZone: 'SR', hint: 'Stage Right (SR)', color: 'from-red-500 to-rose-700' },
+                    { id: 'drum_kit', name: 'Rock Drum Kit', reqZone: 'USC', hint: 'Upstage Center (USC)', color: 'from-purple-600 to-indigo-800' },
+                    { id: 'spotlight_prop', name: 'Stage Spotlight', reqZone: 'USR', hint: 'Upstage Right (USR)', color: 'from-amber-300 to-yellow-500' },
+                    { id: 'costume_chest', name: 'Prop Trunk', reqZone: 'DSL', hint: 'Downstage Left (DSL)', color: 'from-amber-700 to-yellow-900' },
+                    { id: 'gold_star', name: 'Gold Star Badge', reqZone: 'DSR', hint: 'Downstage Right (DSR)', color: 'from-yellow-300 to-amber-500' }
+                ]
+            }
+        };
+
+        function loadScene(sceneKey) {
+            currentSceneKey = sceneKey;
+            placedProps = {};
+            selectedPropForTap = null;
+            updateSelectedPropIndicator();
+
+            const scene = SCENES[sceneKey];
+            if (!scene) return;
+
+            document.getElementById('scene-title-text').innerText = scene.title;
+            document.getElementById('scene-description-text').innerText = `"${scene.desc}"`;
+            
+            const backdropEl = document.getElementById('stage-backdrop');
+            if (backdropEl) backdropEl.style.backgroundImage = scene.backdrop;
+
+            const sceneKeys = Object.keys(SCENES);
+            const index = sceneKeys.indexOf(sceneKey) + 1;
+            document.getElementById('level-badge').innerText = `Scene ${index} of ${sceneKeys.length}`;
+
+            renderTasks();
+            renderPropTray();
+            renderStageElements();
+            calculateScore();
+        }
+
+        function changeSceneTheme(key) {
+            loadScene(key);
+            playSound('drop');
+        }
+
+        function setPlayMode(mode) {
+            currentMode = mode;
+            const scriptCard = document.getElementById('director-script-card');
+            const sandboxPanel = document.getElementById('sandbox-panel');
+            const challengeBtn = document.getElementById('mode-challenge-btn');
+            const sandboxBtn = document.getElementById('mode-sandbox-btn');
+
+            if (mode === 'challenge') {
+                scriptCard.classList.remove('hidden');
+                sandboxPanel.classList.add('hidden');
+                challengeBtn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-2 bg-yellow-400 text-purple-950 shadow-md";
+                sandboxBtn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black transition text-purple-200 hover:text-white flex items-center gap-2";
+            } else {
+                scriptCard.classList.add('hidden');
+                sandboxPanel.classList.remove('hidden');
+                sandboxBtn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-2 bg-yellow-400 text-purple-950 shadow-md";
+                challengeBtn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black transition text-purple-200 hover:text-white flex items-center gap-2";
+            }
+            playSound('drop');
+        }
+
+        function renderTasks() {
+            const container = document.getElementById('task-list-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const sceneProps = SCENES[currentSceneKey].props;
+
+            sceneProps.forEach(prop => {
+                const currentZone = placedProps[prop.id];
+                const isCorrect = currentZone === prop.reqZone;
+                const isPlaced = currentZone !== undefined;
+
+                const item = document.createElement('div');
+                item.className = `p-2.5 rounded-2xl border text-xs flex items-center justify-between transition-all ${
+                    isCorrect 
+                        ? 'bg-green-950/60 border-green-500/50 text-green-200' 
+                        : isPlaced 
+                            ? 'bg-amber-950/40 border-amber-500/40 text-amber-200' 
+                            : 'bg-black/30 border-purple-800/40 text-purple-200'
+                }`;
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-2.5 overflow-hidden">
+                        <div class="w-5 h-5 rounded-lg flex items-center justify-center shrink-0 text-xs font-black ${
+                            isCorrect 
+                                ? 'bg-green-500 text-black' 
+                                : isPlaced 
+                                    ? 'bg-amber-500 text-black' 
+                                    : 'bg-purple-900 text-purple-400 border border-purple-700'
+                        }">
+                            <i class="fa-solid ${isCorrect ? 'fa-check' : isPlaced ? 'fa-arrow-right-arrow-left' : 'fa-thumbtack'}"></i>
+                        </div>
+                        <span class="font-bold truncate">${prop.name}</span>
+                    </div>
+                    <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md shrink-0 ${
+                        isCorrect 
+                            ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                            : 'bg-purple-900/60 text-yellow-300 border border-purple-700/50'
+                    }">${prop.hint}</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            const btn = document.getElementById('audio-toggle-btn');
+            if (audioEnabled) {
+                btn.innerHTML = `<i class="fa-solid fa-volume-high text-sm"></i>`;
+                btn.classList.remove('opacity-50');
+            } else {
+                btn.innerHTML = `<i class="fa-solid fa-volume-xmark text-sm"></i>`;
+                btn.classList.add('opacity-50');
+            }
+        }
+
+        /* WEB AUDIO API SYNTHESIZER */
+        let audioCtx = null;
+        function playSound(type) {
+            if (!audioEnabled) return;
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'drop') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(150, now + 0.12);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+                    osc.start(now);
+                    osc.stop(now + 0.12);
+                } else if (type === 'correct') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+                    osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'remove') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } else if (type === 'victory') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.1);
+                    osc.frequency.setValueAtTime(783.99, now + 0.2);
+                    osc.frequency.setValueAtTime(1046.50, now + 0.35);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+                    osc.start(now);
+                    osc.stop(now + 0.6);
+                }
+            } catch (e) {
+                // Audio fallback
+            }
+        }
+
+        /* CUSTOM HIGH-DEFINITION SVG GRAPHICS FOR ALL THEATER PROPS */
+        function getPropGraphicSVG(propId) {
+            const propSVGs = {
+                // BIRTHDAY SCENE PROPS
+                cake: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <ellipse cx="50" cy="88" rx="42" ry="8" fill="#cbd5e1" />
+                    <path d="M 18 62 L 18 84 Q 50 92 82 84 L 82 62 Z" fill="#f43f5e" />
+                    <ellipse cx="50" cy="62" rx="32" ry="7" fill="#fb7185" />
+                    <path d="M 18 62 Q 26 70 34 62 Q 42 72 50 62 Q 58 70 66 62 Q 74 72 82 62 Q 50 68 18 62 Z" fill="#fbcfe8" />
+                    <path d="M 26 42 L 26 62 Q 50 68 74 62 L 74 42 Z" fill="#ec4899" />
+                    <ellipse cx="50" cy="42" rx="24" ry="6" fill="#f472b6" />
+                    <path d="M 34 26 L 34 42 Q 50 47 66 42 L 66 26 Z" fill="#a855f7" />
+                    <ellipse cx="50" cy="26" rx="16" ry="5" fill="#c084fc" />
+                    <rect x="42" y="14" width="4" height="12" rx="2" fill="#facc15" />
+                    <rect x="48" y="10" width="4" height="16" rx="2" fill="#38bdf8" />
+                    <rect x="54" y="14" width="4" height="12" rx="2" fill="#f43f5e" />
+                    <path d="M 44 8 Q 46 12 44 14 Q 42 12 44 8 Z" fill="#fb923c" />
+                    <path d="M 50 4 Q 52 8 50 10 Q 48 8 50 4 Z" fill="#facc15" />
+                    <path d="M 56 8 Q 58 12 56 14 Q 54 12 56 8 Z" fill="#fb923c" />
+                    <circle cx="20" cy="20" r="2.5" fill="#fde047" />
+                    <circle cx="80" cy="25" r="3" fill="#38bdf8" />
+                </svg>`,
+
+                present: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <rect x="20" y="38" width="60" height="50" rx="8" fill="#eab308" />
+                    <rect x="15" y="28" width="70" height="14" rx="4" fill="#facc15" />
+                    <rect x="43" y="28" width="14" height="60" fill="#ef4444" />
+                    <rect x="15" y="55" width="70" height="10" fill="#dc2626" />
+                    <!-- Big Golden Bow -->
+                    <path d="M 50 28 C 30 10, 20 25, 45 28 Z" fill="#f87171" stroke="#b91c1c" stroke-width="2"/>
+                    <path d="M 50 28 C 70 10, 80 25, 55 28 Z" fill="#f87171" stroke="#b91c1c" stroke-width="2"/>
+                    <circle cx="50" cy="28" r="6" fill="#facc15" />
+                    <circle cx="32" cy="68" r="3" fill="#fef08a" />
+                    <circle cx="68" cy="75" r="4" fill="#fef08a" />
+                </svg>`,
+
+                balloons: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <path d="M 30 50 Q 30 80 48 90" stroke="#cbd5e1" stroke-width="2" fill="none" />
+                    <path d="M 50 50 Q 50 80 50 90" stroke="#cbd5e1" stroke-width="2" fill="none" />
+                    <path d="M 70 50 Q 70 80 52 90" stroke="#cbd5e1" stroke-width="2" fill="none" />
+                    <!-- Balloon Left -->
+                    <ellipse cx="30" cy="36" rx="18" ry="22" fill="#06b6d4" />
+                    <ellipse cx="25" cy="28" rx="5" ry="8" fill="#a5f3fc" opacity="0.6" />
+                    <!-- Balloon Right -->
+                    <ellipse cx="70" cy="36" rx="18" ry="22" fill="#a855f7" />
+                    <ellipse cx="65" cy="28" rx="5" ry="8" fill="#e9d5ff" opacity="0.6" />
+                    <!-- Balloon Center -->
+                    <ellipse cx="50" cy="26" rx="20" ry="24" fill="#f43f5e" />
+                    <ellipse cx="44" cy="18" rx="6" ry="9" fill="#fecdd3" opacity="0.7" />
+                </svg>`,
+
+                magnifier: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <rect x="58" y="58" width="12" height="36" rx="6" fill="#78350f" transform="rotate(-45 58 58)" />
+                    <circle cx="42" cy="42" r="28" fill="#38bdf8" opacity="0.3" stroke="#f59e0b" stroke-width="8" />
+                    <ellipse cx="34" cy="30" rx="12" ry="6" fill="#ffffff" opacity="0.6" transform="rotate(-30 34 30)" />
+                    <circle cx="42" cy="42" r="16" fill="none" stroke="#67e8f9" stroke-width="3" stroke-dasharray="8,4" />
+                </svg>`,
+
+                party_hat: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <path d="M 50 15 L 18 80 Q 50 92 82 80 Z" fill="#d946ef" />
+                    <path d="M 50 15 L 35 84 Q 50 92 65 84 Z" fill="#3b82f6" />
+                    <circle cx="50" cy="15" r="8" fill="#facc15" />
+                    <circle cx="34" cy="60" r="4" fill="#4ade80" />
+                    <circle cx="62" cy="50" r="5" fill="#f43f5e" />
+                    <circle cx="50" cy="72" r="3" fill="#ffffff" />
+                </svg>`,
+
+                banner: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <path d="M 10 30 Q 50 50 90 30 L 90 60 Q 50 80 10 60 Z" fill="#f59e0b" />
+                    <text x="50" y="52" font-size="14" font-weight="900" fill="#4c0519" text-anchor="middle" font-family="sans-serif">SURPRISE!</text>
+                    <polygon points="20,20 28,35 12,35" fill="#ef4444" />
+                    <polygon points="80,20 88,35 72,35" fill="#3b82f6" />
+                </svg>`,
+
+                // SUPERHERO SCENE PROPS
+                super_suit: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <path d="M 30 20 L 70 20 L 85 40 L 75 85 L 25 85 L 15 40 Z" fill="#2563eb" />
+                    <path d="M 35 20 L 65 20 L 50 85 Z" fill="#dc2626" />
+                    <polygon points="50,32 62,48 38,48" fill="#facc15" />
+                    <polygon points="50,56 38,40 62,40" fill="#facc15" />
+                    <circle cx="50" cy="44" r="6" fill="#06b6d4" />
+                </svg>`,
+
+                laser_blaster: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <rect x="15" y="35" width="50" height="20" rx="5" fill="#475569" />
+                    <rect x="65" y="40" width="22" height="10" rx="3" fill="#06b6d4" />
+                    <rect x="25" y="55" width="16" height="30" rx="4" fill="#0f172a" transform="rotate(15 25 55)" />
+                    <circle cx="75" cy="45" r="10" fill="#f43f5e" opacity="0.8" />
+                    <path d="M 85 45 L 98 45" stroke="#facc15" stroke-width="4" stroke-linecap="round" />
+                </svg>`,
+
+                holoscreen: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <rect x="10" y="15" width="80" height="60" rx="10" fill="#0891b2" opacity="0.3" stroke="#22d3ee" stroke-width="4" />
+                    <path d="M 20 55 L 40 35 L 60 50 L 80 30" stroke="#facc15" stroke-width="4" fill="none" />
+                    <circle cx="40" cy="35" r="4" fill="#ef4444" />
+                    <circle cx="80" cy="30" r="4" fill="#4ade80" />
+                    <rect x="40" y="75" width="20" height="15" fill="#1e293b" />
+                </svg>`,
+
+                crystal: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <polygon points="50,10 80,40 50,90 20,40" fill="#10b981" />
+                    <polygon points="50,10 80,40 50,45" fill="#34d399" />
+                    <polygon points="20,40 50,10 50,45" fill="#059669" />
+                    <polygon points="50,45 80,40 50,90" fill="#047857" />
+                    <circle cx="50" cy="40" r="12" fill="#a7f3d0" opacity="0.5" />
+                </svg>`,
+
+                grapple: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <path d="M 50 15 L 50 65" stroke="#94a3b8" stroke-width="6" />
+                    <path d="M 25 45 Q 20 80 50 85 Q 80 80 75 45" stroke="#cbd5e1" stroke-width="6" fill="none" />
+                    <circle cx="50" cy="15" r="8" fill="#e2e8f0" />
+                    <polygon points="25,45 15,40 25,55" fill="#64748b" />
+                    <polygon points="75,45 85,40 75,55" fill="#64748b" />
+                </svg>`,
+
+                cape: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <path d="M 35 20 Q 50 25 65 20 Q 85 85 50 90 Q 15 85 35 20 Z" fill="#dc2626" />
+                    <path d="M 35 20 Q 50 28 65 20 Q 75 80 50 85 Q 25 80 35 20 Z" fill="#ef4444" />
+                    <ellipse cx="50" cy="22" rx="16" ry="5" fill="#facc15" />
+                </svg>`,
+
+                // HAUNTED SCIENCE FAIR PROPS
+                slime_cauldron: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <ellipse cx="50" cy="40" rx="36" ry="12" fill="#16a34a" />
+                    <path d="M 14 40 C 14 85, 86 85, 86 40 Z" fill="#1f2937" />
+                    <!-- Bubbling Slime -->
+                    <circle cx="35" cy="32" r="8" fill="#4ade80" />
+                    <circle cx="55" cy="28" r="12" fill="#86efac" />
+                    <circle cx="70" cy="35" r="6" fill="#22c55e" />
+                    <circle cx="45" cy="18" r="5" fill="#86efac" />
+                    <circle cx="62" cy="12" r="3.5" fill="#4ade80" />
+                </svg>`,
+
+                robot_head: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <rect x="20" y="30" width="60" height="50" rx="10" fill="#64748b" />
+                    <rect x="28" y="40" width="18" height="14" rx="4" fill="#0284c7" />
+                    <rect x="54" y="40" width="18" height="14" rx="4" fill="#0284c7" />
+                    <circle cx="37" cy="47" r="4" fill="#ef4444" />
+                    <circle cx="63" cy="47" r="4" fill="#ef4444" />
+                    <rect x="35" y="65" width="30" height="6" rx="2" fill="#1e293b" />
+                    <line x1="50" y1="30" x2="50" y2="12" stroke="#f87171" stroke-width="4" />
+                    <circle cx="50" cy="10" r="6" fill="#ef4444" />
+                </svg>`,
+
+                trophy: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <path d="M 25 20 L 75 20 L 65 55 Q 50 75 35 55 Z" fill="#eab308" />
+                    <rect x="44" y="68" width="12" height="14" fill="#ca8a04" />
+                    <rect x="28" y="82" width="44" height="12" rx="3" fill="#713f12" />
+                    <path d="M 25 25 C 10 25, 10 45, 28 48" stroke="#facc15" stroke-width="5" fill="none" />
+                    <path d="M 75 25 C 90 25, 90 45, 72 48" stroke="#facc15" stroke-width="5" fill="none" />
+                    <polygon points="50,28 54,38 64,38 56,44 59,54 50,48 41,54 44,44 36,38 46,38" fill="#fef08a" />
+                </svg>`,
+
+                spell_book: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <rect x="18" y="20" width="64" height="65" rx="6" fill="#581c87" />
+                    <rect x="24" y="15" width="64" height="65" rx="6" fill="#7e22ce" />
+                    <path d="M 24 15 L 24 80" stroke="#facc15" stroke-width="4" />
+                    <polygon points="56,35 64,50 48,50" fill="#4ade80" />
+                    <polygon points="56,60 48,45 64,45" fill="#4ade80" />
+                    <circle cx="56" cy="47.5" r="4" fill="#facc15" />
+                </svg>`,
+
+                skeleton: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <circle cx="50" cy="35" r="22" fill="#f8fafc" />
+                    <circle cx="42" cy="35" r="6" fill="#0f172a" />
+                    <circle cx="58" cy="35" r="6" fill="#0f172a" />
+                    <polygon points="50,42 46,48 54,48" fill="#0f172a" />
+                    <path d="M 20 75 L 80 25" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" />
+                    <path d="M 20 25 L 80 75" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" />
+                </svg>`,
+
+                laser_jar: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <circle cx="50" cy="50" r="32" fill="#c084fc" opacity="0.3" stroke="#e9d5ff" stroke-width="4" />
+                    <rect x="38" y="78" width="24" height="14" fill="#334155" />
+                    <circle cx="50" cy="50" r="8" fill="#a855f7" />
+                    <path d="M 50 50 L 30 35 M 50 50 L 70 32 M 50 50 L 65 68 M 50 50 L 32 65" stroke="#f0abfc" stroke-width="3" />
+                </svg>`,
+
+                // SPACE CLASSROOM PROPS
+                hover_desk: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <ellipse cx="50" cy="40" rx="42" ry="16" fill="#0284c7" />
+                    <ellipse cx="50" cy="36" rx="38" ry="12" fill="#38bdf8" />
+                    <rect x="30" y="55" width="40" height="15" rx="6" fill="#1e293b" />
+                    <ellipse cx="50" cy="72" rx="20" ry="6" fill="#38bdf8" opacity="0.8" />
+                </svg>`,
+
+                alien_pet: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <circle cx="50" cy="50" r="35" fill="#38bdf8" opacity="0.3" stroke="#7dd3fc" stroke-width="3" />
+                    <circle cx="50" cy="54" r="20" fill="#22c55e" />
+                    <circle cx="42" cy="45" r="5" fill="#ffffff" />
+                    <circle cx="58" cy="45" r="5" fill="#ffffff" />
+                    <circle cx="50" cy="40" r="6" fill="#ffffff" />
+                    <circle cx="42" cy="45" r="2" fill="#000000" />
+                    <circle cx="58" cy="45" r="2" fill="#000000" />
+                    <circle cx="50" cy="40" r="2.5" fill="#000000" />
+                    <path d="M 42 62 Q 50 68 58 62" stroke="#15803d" stroke-width="3" fill="none" />
+                </svg>`,
+
+                space_helmet: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <circle cx="50" cy="48" r="34" fill="#f8fafc" />
+                    <ellipse cx="50" cy="45" rx="24" ry="18" fill="#f59e0b" />
+                    <ellipse cx="45" cy="38" rx="10" ry="5" fill="#fef08a" opacity="0.6" />
+                    <rect x="30" y="78" width="40" height="10" rx="4" fill="#cbd5e1" />
+                </svg>`,
+
+                galaxy_globe: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <circle cx="50" cy="50" r="26" fill="#818cf8" />
+                    <ellipse cx="50" cy="50" rx="42" ry="10" fill="none" stroke="#f43f5e" stroke-width="5" transform="rotate(-20 50 50)" />
+                    <circle cx="40" cy="42" r="5" fill="#c7d2fe" />
+                </svg>`,
+
+                jetpack: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <rect x="22" y="20" width="22" height="50" rx="8" fill="#ef4444" />
+                    <rect x="56" y="20" width="22" height="50" rx="8" fill="#ef4444" />
+                    <rect x="40" y="30" width="20" height="30" fill="#94a3b8" />
+                    <polygon points="22,70 33,90 44,70" fill="#f59e0b" />
+                    <polygon points="56,70 67,90 78,70" fill="#f59e0b" />
+                </svg>`,
+
+                raygun_pen: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <rect x="15" y="42" width="70" height="16" rx="8" fill="#a855f7" />
+                    <polygon points="85,42 98,50 85,58" fill="#fde047" />
+                    <circle cx="30" cy="50" r="5" fill="#22d3ee" />
+                </svg>`,
+
+                // MUSICAL STAGE PROPS
+                mic_stand: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <circle cx="50" cy="22" r="14" fill="#e2e8f0" stroke="#94a3b8" stroke-width="3" />
+                    <line x1="50" y1="36" x2="50" y2="82" stroke="#facc15" stroke-width="6" />
+                    <ellipse cx="50" cy="85" rx="28" ry="8" fill="#ca8a04" />
+                    <line x1="40" y1="22" x2="60" y2="22" stroke="#64748b" stroke-width="2" />
+                </svg>`,
+
+                guitar: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <path d="M 20 70 Q 15 45 35 45 Q 45 45 40 30 L 75 12 L 85 22 L 55 45 Q 65 60 50 80 Q 30 95 20 70 Z" fill="#ef4444" />
+                    <circle cx="36" cy="66" r="10" fill="#ffffff" />
+                    <line x1="42" y1="30" x2="78" y2="16" stroke="#f8fafc" stroke-width="3" />
+                </svg>`,
+
+                spotlight_prop: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <polygon points="40,20 60,20 85,85 15,85" fill="#fef08a" opacity="0.4" />
+                    <rect x="35" y="10" width="30" height="15" rx="4" fill="#334155" />
+                    <circle cx="50" cy="25" r="12" fill="#facc15" />
+                </svg>`,
+
+                costume_chest: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <rect x="15" y="40" width="70" height="45" rx="6" fill="#854d0e" />
+                    <path d="M 15 40 Q 50 18 85 40 Z" fill="#a16207" />
+                    <rect x="44" y="45" width="12" height="16" fill="#facc15" />
+                </svg>`,
+
+                gold_star: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <polygon points="50,10 63,38 93,38 68,56 78,86 50,68 22,86 32,56 7,38 37,38" fill="#facc15" stroke="#ca8a04" stroke-width="3" />
+                </svg>`,
+
+                drum_kit: `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                    <ellipse cx="50" cy="40" rx="35" ry="12" fill="#e2e8f0" />
+                    <rect x="15" y="40" width="70" height="35" fill="#a855f7" />
+                    <ellipse cx="50" cy="75" rx="35" ry="12" fill="#7e22ce" />
+                    <line x1="20" y1="20" x2="45" y2="38" stroke="#f59e0b" stroke-width="4" stroke-linecap="round" />
+                    <line x1="80" y1="20" x2="55" y2="38" stroke="#f59e0b" stroke-width="4" stroke-linecap="round" />
+                </svg>`
+            };
+
+            return propSVGs[propId] || `<div class="text-2xl font-black text-amber-300">🎭</div>`;
+        }
+
+        function renderPropTray() {
+            const tray = document.getElementById('prop-tray');
+            tray.innerHTML = '';
+
+            const currentScene = SCENES[currentSceneKey];
+
+            currentScene.props.forEach(prop => {
+                const isPlaced = placedProps.hasOwnProperty(prop.id);
+                if (!isPlaced) {
+                    const card = document.createElement('div');
+                    card.className = `prop-card prop-card-glow bg-gradient-to-b from-purple-900/95 to-purple-950/95 border-2 border-yellow-400/50 rounded-2xl p-2 flex flex-col items-center justify-between text-center cursor-grab active:cursor-grabbing hover:border-yellow-300 shadow-xl ${selectedPropForTap === prop.id ? 'selected' : ''}`;
+                    card.setAttribute('draggable', 'true');
+                    card.setAttribute('data-prop-id', prop.id);
+                    card.onclick = () => selectPropForTap(prop.id);
+                    card.ondragstart = (e) => handleDragStart(e, prop.id);
+
+                    card.innerHTML = `
+                        <div class="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-tr ${prop.color} p-2 flex items-center justify-center my-1 shadow-lg border border-white/40 transform group-hover:scale-110">
+                            ${getPropGraphicSVG(prop.id)}
+                        </div>
+                        <span class="text-[11px] font-black text-yellow-200 line-clamp-1 mt-1">${prop.name}</span>
+                    `;
+                    tray.appendChild(card);
+                }
+            });
+
+            if (tray.children.length === 0) {
+                tray.innerHTML = `<div class="col-span-full text-center py-4 text-xs font-black text-yellow-300 italic flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-check text-green-400 text-sm"></i> Bravo! All props are placed on stage!
+                </div>`;
+            }
+        }
+
+        function renderStageElements() {
+            clearAllStageCells();
+
+            const sceneProps = SCENES[currentSceneKey].props;
+
+            Object.entries(placedProps).forEach(([propId, zoneId]) => {
+                const propData = sceneProps.find(p => p.id === propId);
+                const cell = document.querySelector(`[data-zone="${zoneId}"] .cell-content`);
+
+                if (cell && propData) {
+                    const standee = document.createElement('div');
+                    standee.className = `prop-standee group relative flex flex-col items-center justify-center cursor-pointer my-1`;
+                    standee.onclick = (e) => {
+                        e.stopPropagation();
+                        removePropFromStage(propId);
+                    };
+
+                    standee.innerHTML = `
+                        <div class="relative w-14 h-14 md:w-16 md:h-16 p-2 rounded-2xl bg-gradient-to-tr ${propData.color} border-2 border-yellow-300 shadow-2xl flex items-center justify-center">
+                            ${getPropGraphicSVG(propId)}
+                            <button title="Remove Prop" class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-md transition">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <!-- Wooden Stage Standee Pedestal Base -->
+                        <div class="w-16 md:w-20 h-3.5 -mt-1.5 bg-gradient-to-r from-amber-900 via-amber-700 to-amber-950 rounded-full border border-amber-400/60 shadow-lg flex items-center justify-center px-1">
+                            <span class="text-[9px] font-extrabold text-amber-200 tracking-tight truncate">${propData.name}</span>
+                        </div>
+                    `;
+
+                    cell.appendChild(standee);
+                }
+            });
+        }
+
+        function clearAllStageCells() {
+            document.querySelectorAll('.cell-content').forEach(el => el.innerHTML = '');
+        }
+
+        function clearStage() {
+            placedProps = {};
+            playSound('drop');
+            renderStageElements();
+            renderPropTray();
+            renderTasks();
+            calculateScore();
+        }
+
+        function resetCurrentScene() {
+            clearStage();
+        }
+
+        function handleDragStart(e, propId) {
+            e.dataTransfer.setData('text/plain', propId);
+            selectedPropForTap = propId;
+            updateSelectedPropIndicator();
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        function handleDrop(e, zoneId) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            const propId = e.dataTransfer.getData('text/plain') || selectedPropForTap;
+            if (propId) {
+                placePropInZone(propId, zoneId);
+            }
+        }
+
+        function selectPropForTap(propId) {
+            if (selectedPropForTap === propId) {
+                selectedPropForTap = null;
+            } else {
+                selectedPropForTap = propId;
+            }
+            updateSelectedPropIndicator();
+            renderPropTray();
+            playSound('drop');
+        }
+
+        function updateSelectedPropIndicator() {
+            const indicator = document.getElementById('selected-prop-indicator');
+            const nameSpan = document.getElementById('selected-prop-name');
+            
+            if (selectedPropForTap) {
+                const sceneProps = SCENES[currentSceneKey].props;
+                const p = sceneProps.find(item => item.id === selectedPropForTap);
+                if (p) {
+                    nameSpan.innerText = p.name;
+                    indicator.classList.remove('hidden');
+                    return;
+                }
+            }
+            indicator.classList.add('hidden');
+        }
+
+        function handleGridClick(zoneId) {
+            if (selectedPropForTap) {
+                placePropInZone(selectedPropForTap, zoneId);
+                selectedPropForTap = null;
+                updateSelectedPropIndicator();
+            }
+        }
+
+        function placePropInZone(propId, zoneId) {
+            placedProps[propId] = zoneId;
+
+            const propData = SCENES[currentSceneKey].props.find(p => p.id === propId);
+            const isCorrect = propData && propData.reqZone === zoneId;
+
+            if (isCorrect) {
+                playSound('correct');
+                const cellEl = document.querySelector(`[data-zone="${zoneId}"]`);
+                if (cellEl) {
+                    cellEl.classList.add('correct-flash');
+                    setTimeout(() => cellEl.classList.remove('correct-flash'), 600);
+                }
+            } else {
+                playSound('drop');
+            }
+
+            renderPropTray();
+            renderStageElements();
+            renderTasks();
+            calculateScore();
+        }
+
+        function removePropFromStage(propId) {
+            delete placedProps[propId];
+            playSound('remove');
+            renderPropTray();
+            renderStageElements();
+            renderTasks();
+            calculateScore();
+        }
+
+        function calculateScore() {
+            if (currentMode === 'sandbox') return;
+
+            const sceneProps = SCENES[currentSceneKey].props;
+            let correctCount = 0;
+
+            sceneProps.forEach(prop => {
+                if (placedProps[prop.id] === prop.reqZone) {
+                    correctCount++;
+                }
+            });
+
+            score = Math.round((correctCount / sceneProps.length) * 100);
+            document.getElementById('score-text').innerText = `${score} / 100`;
+
+            if (correctCount === sceneProps.length && sceneProps.length > 0) {
+                setTimeout(() => {
+                    triggerCurtainCall();
+                }, 400);
+            }
+        }
+
+        function triggerCurtainCall() {
+            playSound('victory');
+            
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+
+            if (currentMode === 'challenge') {
+                document.getElementById('completed-scene-name').innerText = SCENES[currentSceneKey].title;
+                document.getElementById('victory-score').innerText = `${score} / 100`;
+                openModal('victory-modal');
+            }
+        }
+
+        function nextScene() {
+            closeModal('victory-modal');
+            const keys = Object.keys(SCENES);
+            const currentIndex = keys.indexOf(currentSceneKey);
+            const nextIndex = (currentIndex + 1) % keys.length;
+            currentSceneKey = keys[nextIndex];
+
+            document.getElementById('scene-select').value = currentSceneKey;
+            loadScene(currentSceneKey);
+        }
+
+        function toggleGridLabels() {
+            showGridLabels = !showGridLabels;
+            const labels = document.querySelectorAll('.zone-label');
+            const btnText = document.getElementById('grid-toggle-text');
+
+            labels.forEach(lbl => {
+                lbl.style.display = showGridLabels ? 'block' : 'none';
+            });
+
+            btnText.innerText = showGridLabels ? 'Hide Stage Labels' : 'Show Stage Labels';
+            playSound('drop');
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        window.onload = function() {
+            loadScene('birthday');
+        };
+    </script>
+</body>
+</html>
